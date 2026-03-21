@@ -203,8 +203,11 @@ class _HomeState extends State<Home> {
                               Colors.orangeAccent,
                               Colors.redAccent,
                             ],
-                            child: Icon(Icons.close,
-                                size: 12, color: Colors.white54),
+                            child: Icon(
+                              Icons.close,
+                              size: 12,
+                              color: Colors.white54,
+                            ),
                           ),
                         ],
                       ),
