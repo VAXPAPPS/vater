@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:vater/src/platform_menu.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -61,12 +62,14 @@ class TerminalTab {
   String title;
   late final Terminal terminal;
   late final TerminalController terminalController;
+  late final ScrollController scrollController;
   late final Pty pty;
   bool isInitialized = false;
 
   TerminalTab({required this.id, this.title = 'Terminal'}) {
     terminal = Terminal(maxLines: 10000);
     terminalController = TerminalController();
+    scrollController = ScrollController();
   }
 
   void init() {
@@ -98,6 +101,7 @@ class TerminalTab {
   }
 
   void dispose() {
+    scrollController.dispose();
     // pty.kill(); // Optional: kill process when tab closes
   }
 }
@@ -220,11 +224,14 @@ class _HomeState extends State<Home> {
         ],
       ),
       body: SafeArea(
-        child: TerminalView(
-          activeTab.terminal,
-          controller: activeTab.terminalController,
-          autofocus: true,
-          backgroundOpacity: 0.0,
+        child: AutoScrollTerminalWrapper(
+          scrollController: activeTab.scrollController,
+          child: TerminalView(
+            activeTab.terminal,
+            controller: activeTab.terminalController,
+            scrollController: activeTab.scrollController,
+            autofocus: true,
+            backgroundOpacity: 0.0,
           onSecondaryTapDown: (details, offset) async {
             final selection = activeTab.terminalController.selection;
             if (selection != null) {
@@ -239,6 +246,7 @@ class _HomeState extends State<Home> {
               }
             }
           },
+        ),
         ),
       ),
     );
@@ -255,4 +263,97 @@ String get shell {
   }
 
   return 'sh';
+}
+
+class AutoScrollTerminalWrapper extends StatefulWidget {
+  final Widget child;
+  final ScrollController scrollController;
+
+  const AutoScrollTerminalWrapper({
+    super.key,
+    required this.child,
+    required this.scrollController,
+  });
+
+  @override
+  State<AutoScrollTerminalWrapper> createState() => _AutoScrollTerminalWrapperState();
+}
+
+class _AutoScrollTerminalWrapperState extends State<AutoScrollTerminalWrapper> {
+  Timer? _scrollTimer;
+  static const double _scrollThreshold = 40.0;
+  static const double _scrollAmount = 15.0;
+
+  double? _pointerDy;
+  double? _boxHeight;
+  int _scrollDirection = 0; // -1 for up, 1 for down, 0 for none
+
+  void _checkScroll() {
+    if (_pointerDy == null || _boxHeight == null) return;
+    
+    if (_pointerDy! < _scrollThreshold) {
+      _startScrolling(-1);
+    } else if (_pointerDy! > _boxHeight! - _scrollThreshold) {
+      _startScrolling(1);
+    } else {
+      _stopScrolling();
+    }
+  }
+
+  void _startScrolling(int direction) {
+    if (_scrollDirection == direction && _scrollTimer != null) return;
+    _stopScrolling();
+    _scrollDirection = direction;
+    
+    _scrollTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
+      if (!widget.scrollController.hasClients) return;
+      final position = widget.scrollController.position;
+      
+      double target = position.pixels + (_scrollAmount * _scrollDirection);
+      target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+      
+      if (target != position.pixels) {
+        widget.scrollController.jumpTo(target);
+      }
+    });
+  }
+
+  void _stopScrolling() {
+    _scrollTimer?.cancel();
+    _scrollTimer = null;
+    _scrollDirection = 0;
+  }
+
+  @override
+  void dispose() {
+    _stopScrolling();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerMove: (event) {
+        if (!event.down) {
+          _stopScrolling();
+          return;
+        }
+        final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+        if (renderBox != null) {
+          _pointerDy = event.localPosition.dy;
+          _boxHeight = renderBox.size.height;
+          _checkScroll();
+        }
+      },
+      onPointerUp: (_) {
+         _pointerDy = null;
+         _stopScrolling();
+      },
+      onPointerCancel: (_) {
+         _pointerDy = null;
+         _stopScrolling();
+      },
+      child: widget.child,
+    );
+  }
 }
