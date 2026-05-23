@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=vater
+Comment=Flutter Application - vater
+Exec=/usr/bin/vater
+Icon=/usr/share/icons/hicolor/256x256/apps/vater.png
+Terminal=false
+Categories=Utility;Development;
+Keywords=terminal;console;shell;bash;command;
+MimeType=application/x-shell-script;
