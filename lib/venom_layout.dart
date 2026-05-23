@@ -2,6 +2,7 @@ import 'dart:ui'; // مهم للـ ImageFilter
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:venom_config/venom_config.dart';
 
 // 1. هذا هو الـ Layout الرئيسي الذي ستستخدمه في تطبيقك
 class VenomScaffold extends StatefulWidget {
@@ -24,6 +25,44 @@ class _VenomScaffoldState extends State<VenomScaffold> {
   // متغير الحالة للتحكم في الضبابية
   bool _isCinematicBlurActive = false;
 
+  Color _backgroundColor = const Color.fromARGB(100, 0, 0, 0);
+  Color _textColor = Colors.white;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig(VenomConfig().getAll());
+    VenomConfig().onConfigChanged.listen((config) {
+      _loadConfig(config);
+    });
+  }
+
+  void _loadConfig(Map<String, dynamic> config) {
+    if (mounted) {
+      final bgHex = config['system.background_color'] as String?;
+      final textHex = config['system.text_color'] as String?;
+
+      setState(() {
+        if (bgHex != null) _backgroundColor = _parseColor(bgHex);
+        if (textHex != null) _textColor = _parseColor(textHex);
+      });
+    }
+  }
+
+  Color _parseColor(String hex) {
+    hex = hex.replaceAll('#', '');
+    if (hex.length == 3) {
+      hex = hex.split('').map((c) => '$c$c').join();
+    }
+    if (hex.length == 6) {
+      hex = 'FF$hex';
+    }
+    if (hex.length == 8) {
+      return Color(int.parse(hex, radix: 16));
+    }
+    return const Color.fromARGB(100, 0, 0, 0); // Default fallback
+  }
+
   void _setBlur(bool active) {
     if (_isCinematicBlurActive != active) {
       setState(() {
@@ -35,7 +74,7 @@ class _VenomScaffoldState extends State<VenomScaffold> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromARGB(100, 0, 0, 0),
+      backgroundColor: _backgroundColor,
       body: Stack(
         children: [
           // --- الطبقة 1: محتوى التطبيق ---
@@ -72,6 +111,7 @@ class _VenomScaffoldState extends State<VenomScaffold> {
             child: VenomAppbar(
               title: widget.title,
               customTitle: widget.customTitle,
+              textColor: _textColor,
               // تمرير دالة للتحكم في البلور عند لمس الأزرار
               onHoverEnter: () => _setBlur(true),
               onHoverExit: () => _setBlur(false),
@@ -89,6 +129,7 @@ class VenomAppbar extends StatelessWidget {
   final Widget? customTitle;
   final VoidCallback onHoverEnter;
   final VoidCallback onHoverExit;
+  final Color textColor;
 
   const VenomAppbar({
     super.key,
@@ -96,6 +137,7 @@ class VenomAppbar extends StatelessWidget {
     this.customTitle,
     required this.onHoverEnter,
     required this.onHoverExit,
+    this.textColor = Colors.white,
   });
 
   @override
@@ -119,10 +161,10 @@ class VenomAppbar extends StatelessWidget {
                 child: customTitle ??
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: textColor,
                         letterSpacing: 0.5,
                       ),
                     ),

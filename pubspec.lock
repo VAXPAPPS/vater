@@ -533,6 +533,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  venom_config:
+    dependency: "direct main"
+    description:
+      name: venom_config
+      sha256: "4d106054c09adf87ce4748d4fa66054e108a78c81ad85fdbd49582f336020134"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   vm_service:
     dependency: transitive
     description:

@@ -9,10 +9,13 @@ import 'package:flutter_pty/flutter_pty.dart';
 import 'package:vater/venom_layout.dart';
 import 'package:xterm/xterm.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:venom_config/venom_config.dart';
 
 Future<void> main() async {
   // Initialize Flutter bindings first to ensure the binary messenger is ready
   WidgetsFlutterBinding.ensureInitialized();
+
+  await VenomConfig().init();
 
   // Initialize window manager for desktop controls
   await windowManager.ensureInitialized();
