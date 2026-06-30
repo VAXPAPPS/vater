@@ -11,11 +11,16 @@ import 'package:xterm/xterm.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:venom_config/venom_config.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   // Initialize Flutter bindings first to ensure the binary messenger is ready
   WidgetsFlutterBinding.ensureInitialized();
 
   await VenomConfig().init();
+
+  String? initialPath;
+  if (args.isNotEmpty) {
+    initialPath = args.first;
+  }
 
   // Initialize window manager for desktop controls
   await windowManager.ensureInitialized();
@@ -30,7 +35,7 @@ Future<void> main() async {
     await windowManager.show();
     await windowManager.focus();
   });
-  runApp(MyApp());
+  runApp(MyApp(initialPath: initialPath));
 }
 
 bool get isDesktop {
@@ -43,17 +48,23 @@ bool get isDesktop {
 }
 
 class MyApp extends StatelessWidget {
+  final String? initialPath;
+
+  MyApp({this.initialPath});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AppPlatformMenu(child: Home()),
+      home: AppPlatformMenu(child: Home(initialPath: initialPath)),
     );
   }
 }
 
 class Home extends StatefulWidget {
-  Home({super.key});
+  final String? initialPath;
+
+  Home({super.key, this.initialPath});
 
   @override
   // ignore: library_private_types_in_public_api
@@ -63,13 +74,14 @@ class Home extends StatefulWidget {
 class TerminalTab {
   final String id;
   String title;
+  final String? workingDirectory;
   late final Terminal terminal;
   late final TerminalController terminalController;
   late final ScrollController scrollController;
   late final Pty pty;
   bool isInitialized = false;
 
-  TerminalTab({required this.id, this.title = 'Terminal'}) {
+  TerminalTab({required this.id, this.title = 'Terminal', this.workingDirectory}) {
     terminal = Terminal(maxLines: 10000);
     terminalController = TerminalController();
     scrollController = ScrollController();
@@ -83,6 +95,7 @@ class TerminalTab {
       shell,
       columns: terminal.viewWidth,
       rows: terminal.viewHeight,
+      workingDirectory: workingDirectory,
     );
 
     pty.output
@@ -116,14 +129,15 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    _addNewTab();
+    _addNewTab(initialPath: widget.initialPath);
   }
 
-  void _addNewTab() {
+  void _addNewTab({String? initialPath}) {
     setState(() {
       final newTab = TerminalTab(
         id: DateTime.now().toString(),
         title: 'VaTer ${_tabs.length + 1}',
+        workingDirectory: initialPath,
       );
       _tabs.add(newTab);
       _activeTabIndex = _tabs.length - 1;
